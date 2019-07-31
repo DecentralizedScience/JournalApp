@@ -68,30 +68,15 @@ contract Template is TemplateBase {
 
         address root = msg.sender;
         bytes32 appId = keccak256(abi.encodePacked(apmNamehash("open"), keccak256("journal")));
-        bytes32 votingAppId = apmNamehash("voting");
-        bytes32 tokenManagerAppId = apmNamehash("token-manager");
 
         JournalApp app = JournalApp(dao.newAppInstance(appId, latestVersionAppBase(appId)));
-        Voting voting = Voting(dao.newAppInstance(votingAppId, latestVersionAppBase(votingAppId)));
-        TokenManager tokenManager = TokenManager(dao.newAppInstance(tokenManagerAppId, latestVersionAppBase(tokenManagerAppId)));
 
-        MiniMeToken token = tokenFactory.createCloneToken(MiniMeToken(0), 0, "Editor Comitee", 0, "ECM", true);
-        token.changeController(tokenManager);
-
-        app.initialize();
-        tokenManager.initialize(token, true, 0);
-        // Initialize apps
-        voting.initialize(token, 50 * PCT, 20 * PCT, 1 days);
-
-        acl.createPermission(this, tokenManager, tokenManager.MINT_ROLE(), this);
-        tokenManager.mint(root, 1); // Give one token to root
-
-        acl.createPermission(ANY_ENTITY, voting, voting.CREATE_VOTES_ROLE(), root);
-
-        acl.createPermission(tokenManager, app, app.ACCEPT_FOR_REVIEW_ROLE(), voting);
-        acl.createPermission(voting, app, app.PUBLISH_ROLE(), root);
-        acl.createPermission(voting, app, app.UNPUBLISH_ROLE(), root);
-        acl.grantPermission(voting, tokenManager, tokenManager.MINT_ROLE());
+        app.initialize(tokenFactory);
+        acl.createPermission(root, app, app.ACCEPT_FOR_REVIEW_ROLE(), root);
+        acl.createPermission(root, app, app.PUBLISH_ROLE(), root);
+        acl.createPermission(root, app, app.UNPUBLISH_ROLE(), root);
+        acl.grantPermission(app, dao, dao.APP_MANAGER_ROLE());
+        acl.grantPermission(app, acl, acl.CREATE_PERMISSIONS_ROLE());
 
         // Clean up permissions
         acl.grantPermission(root, dao, dao.APP_MANAGER_ROLE());
