@@ -184,11 +184,10 @@ contract JournalApp is AragonApp, BaseTemplate {
     bytes32 constant public PUBLISH_ROLE = keccak256("PUBLISH_ROLE");
     bytes32 constant public UNPUBLISH_ROLE = keccak256("UNPUBLISH_ROLE");
 
-    function initialize(MiniMeTokenFactory _miniMeFactory) public onlyInit {
-        initialized();
-        ens = ENS(0x5f6f7e8cc7346a11ca2def8f827b7a0b612c56a1);
+    function initialize(MiniMeTokenFactory _miniMeFactory, ENS _ens) public onlyInit {
+        ens = _ens;
         miniMeFactory = _miniMeFactory;
-
+        initialized();
     }
 
     /**
@@ -228,7 +227,9 @@ contract JournalApp is AragonApp, BaseTemplate {
         TokenManager tokenManager = _installTokenManagerApp(_dao, token, false, 1);
         _createTokenManagerPermissions(acl, tokenManager, this, this);
         _mintTokens(acl, tokenManager, msg.sender, 1);
-        Voting voting = _installVotingApp(_dao, token, 50 * PCT, 20 * PCT, 1 days);
+        Voting voting = _installVotingApp(_dao, token, 99 * PCT, 99 * PCT, 365 days);
+        acl.createPermission(tokenManager, voting, voting.CREATE_VOTES_ROLE(), this);
         _createVotingPermissions(acl, voting, this, this);
+        acl.grantPermission(voting, this, PUBLISH_ROLE);
     }
 }

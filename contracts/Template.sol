@@ -71,9 +71,9 @@ contract Template is TemplateBase {
 
         JournalApp app = JournalApp(dao.newAppInstance(appId, latestVersionAppBase(appId)));
 
-        app.initialize(tokenFactory);
+        app.initialize(tokenFactory, ens);
         acl.createPermission(root, app, app.ACCEPT_FOR_REVIEW_ROLE(), root);
-        acl.createPermission(root, app, app.PUBLISH_ROLE(), root);
+        acl.createPermission(app, app, app.PUBLISH_ROLE(), app);
         acl.createPermission(root, app, app.UNPUBLISH_ROLE(), root);
         acl.grantPermission(app, dao, dao.APP_MANAGER_ROLE());
         acl.grantPermission(app, acl, acl.CREATE_PERMISSIONS_ROLE());
