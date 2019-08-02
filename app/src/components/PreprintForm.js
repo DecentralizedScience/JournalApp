@@ -12,7 +12,7 @@ function PreprintForm({ handler }) {
     <form onSubmit={e => e.preventDefault()}>
       <input type="file" onChange={e => upload(e.target.files[0])} />
       <Button mode="secondary" onClick={() => handler(preprint)}>
-        Prepublish
+        Accept for review
       </Button>
     </form>
   )

@@ -82,7 +82,14 @@ contract BaseTemplate is APMNamehash, IsContract {
 
     /* TOKEN MANAGER */
 
-    function _installTokenManagerApp(Kernel _dao, MiniMeToken _token, bool _transferable, uint256 _maxAccountTokens) internal returns (TokenManager) {
+    function _installTokenManagerApp(
+        Kernel _dao,
+        MiniMeToken _token,
+        bool _transferable,
+        uint256 _maxAccountTokens
+    )
+        internal returns (TokenManager)
+    {
         TokenManager tokenManager = TokenManager(_installNonDefaultApp(_dao, TOKEN_MANAGER_APP_ID));
         _token.changeController(tokenManager);
         tokenManager.initialize(_token, _transferable, _maxAccountTokens);
@@ -119,7 +126,15 @@ contract BaseTemplate is APMNamehash, IsContract {
 
     /* VOTING */
 
-    function _installVotingApp(Kernel _dao, MiniMeToken _token, uint64 _support, uint64 _acceptance, uint64 _duration) internal returns (Voting) {
+    function _installVotingApp(
+        Kernel _dao,
+        MiniMeToken _token,
+        uint64 _support,
+        uint64 _acceptance,
+        uint64 _duration
+    )
+        internal returns (Voting)
+    {
         Voting voting = Voting(_installNonDefaultApp(_dao, VOTING_APP_ID));
         voting.initialize(_token, _support, _acceptance, _duration);
         return voting;
@@ -170,14 +185,24 @@ contract BaseTemplate is APMNamehash, IsContract {
 
 contract JournalApp is AragonApp, BaseTemplate {
 
+    /// Constants
+    string private constant TOKEN_NAME_PREFIX = "Reviewers Committee #";
+    string private constant TOKEN_SYMBOL_PREFIX = "Paper #";
+
     /// Events
     event AcceptForReview(address indexed entity, uint256 paper, bytes hash);
     event Publish(address indexed entity, uint256 paper);
     event Unpublish(address indexed entity, uint256 paper);
 
+    /// Structs
+    struct Paper {
+        int8 state;
+        Voting voting;
+    }
+
     /// State
     uint256 public lastPaper;
-    mapping(uint256 => int8) public papersState; // 0 -> preprint, 1 -> published, -1 -> revoked
+    mapping(uint256 => Paper) public papers; // 0 -> preprint, 1 -> published, -1 -> revoked
 
     /// ACL
     bytes32 constant public ACCEPT_FOR_REVIEW_ROLE = keccak256("ACCEPT_FOR_REVIEW_ROLE");
@@ -197,8 +222,8 @@ contract JournalApp is AragonApp, BaseTemplate {
     function acceptForReview(bytes hash) external auth(ACCEPT_FOR_REVIEW_ROLE) {
         assert(lastPaper + 1 >= lastPaper);
         lastPaper = lastPaper + 1;
-        papersState[lastPaper] = 0;
-        addEditorsCommittee();
+        papers[lastPaper].state = 0;
+        addEditorsCommittee(lastPaper);
         emit AcceptForReview(msg.sender, lastPaper, hash);
     }
 
@@ -206,8 +231,9 @@ contract JournalApp is AragonApp, BaseTemplate {
      * @notice Publish the paper #`paper`
      * @param paper Number of the paper to publish
      */
-    function publish(uint256 paper) external auth(PUBLISH_ROLE) {
-        papersState[paper] = 1;
+    function publish(uint256 paper) external authP(PUBLISH_ROLE, arr(paper)) {
+        papers[paper].state = 1;
+        revokeEditorsPermission(paper);
         emit Publish(msg.sender, paper);
     }
 
@@ -216,20 +242,56 @@ contract JournalApp is AragonApp, BaseTemplate {
      * @param paper Number of the paper to unpublish
      */
     function unpublish(uint256 paper) external auth(UNPUBLISH_ROLE) {
-        papersState[paper] = -1;
+        papers[paper].state = -1;
         emit Unpublish(msg.sender, paper);
     }
 
-    function addEditorsCommittee() internal {
+    function addEditorsCommittee(uint256 paper) internal {
         Kernel _dao = Kernel(kernel());
         ACL acl = ACL(_dao.acl());
-        MiniMeToken token = _createToken("Reviewers", "RVW", 0);
+        string memory tokenName = string(abi.encodePacked(TOKEN_NAME_PREFIX, uint2str(paper)));
+        string memory tokenSym = string(abi.encodePacked(TOKEN_SYMBOL_PREFIX, uint2str(paper)));
+        MiniMeToken token = _createToken(tokenName, tokenSym, 0);
         TokenManager tokenManager = _installTokenManagerApp(_dao, token, false, 1);
         _createTokenManagerPermissions(acl, tokenManager, this, this);
         _mintTokens(acl, tokenManager, msg.sender, 1);
         Voting voting = _installVotingApp(_dao, token, 99 * PCT, 99 * PCT, 365 days);
         acl.createPermission(tokenManager, voting, voting.CREATE_VOTES_ROLE(), this);
         _createVotingPermissions(acl, voting, this, this);
-        acl.grantPermission(voting, this, PUBLISH_ROLE);
+        uint8 id = 0; // Argument 0
+        uint8 op = 1; // EQ operation
+        uint256 param = uint256(id) << 248 | uint256(op) << 240 | paper;
+        acl.grantPermissionP(voting, this, PUBLISH_ROLE, arr(param));
+        papers[paper].voting = voting;
+    }
+
+    function revokeEditorsPermission(uint256 paper) internal {
+        Kernel _dao = Kernel(kernel());
+        ACL acl = ACL(_dao.acl());
+        Voting voting = papers[paper].voting;
+        acl.revokePermission(voting, this, PUBLISH_ROLE);
+    }
+
+    /**
+     * Transforms a uint into a string (adapted from oraclizeAPI_0.5)
+     */
+    function uint2str(uint i) internal pure returns (string memory _uintAsString) {
+        uint _i = i;
+        if (_i == 0) {
+            return "0";
+        }
+        uint j = _i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len - 1;
+        while (_i != 0) {
+            bstr[k--] = byte(uint8(48 + _i % 10));
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }

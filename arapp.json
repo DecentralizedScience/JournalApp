@@ -1,14 +1,16 @@
 {
   "roles": [
     {
-      "name": "Publish a preprint",
+      "name": "Accept a preprint",
       "id": "ACCEPT_FOR_REVIEW_ROLE",
       "params": []
     },
     {
-      "name": "Accept a preprint",
+      "name": "Publish a paper",
       "id": "PUBLISH_ROLE",
-      "params": []
+      "params": [
+        "Paper"
+      ]
     },
     {
       "name": "Unpublish a paper",

@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAragonApi } from '@aragon/api-react'
-import { Main } from '@aragon/ui'
-import styled from 'styled-components'
+import { Main, SidePanel, IconPlus } from '@aragon/ui'
 import PreprintForm from './components/PreprintForm'
 import PapersTable from './components/PapersTable'
 import { hexToIpfs } from './lib/ipfs-util'
+import AppLayout from './components/AppLayout'
+import EmptyState from './screens/EmptyState'
 
 function App() {
   const { api, appState } = useAragonApi()
@@ -18,35 +19,50 @@ function App() {
   const preprints = papersArray.filter(paper => paper.state === 'accepted')
   const published = papersArray.filter(paper => paper.state === 'published')
 
+  const [sidepanelOpened, setSidePanelOpened] = useState(false)
   return (
-    <Main>
-      {syncing && <Syncing />}
-      <Title>Journal</Title>
-      <PapersTable
-        title="Published Papers"
-        papers={published}
-        action="Unpublish"
-        handler={key => api.unpublish(key)}
-      />
-      <PapersTable
-        title="Preprints"
-        papers={preprints}
-        action="Publish"
-        handler={key => api.publish(key)}
-      />
-      <PreprintForm handler={hash => api.acceptForReview(hash)} />
+    <Main assetsUrl="./aragon-ui">
+      <div css="min-width: 320px">
+        <AppLayout
+          title="Journal"
+          mainButton={{
+            label: 'Accept for review',
+            icon: <IconPlus />,
+            onClick: f => f,
+          }}
+          smallViewPadding={0}
+        >
+          {papersArray.length > 0 ? (
+            <div>
+              <PapersTable
+                title="Published Papers"
+                papers={published}
+                action="Unpublish"
+                handler={key => api.unpublish(key)}
+              />
+              <PapersTable
+                title="Accepted for review"
+                papers={preprints}
+                action="Publish"
+                handler={key => api.publish(key)}
+              />
+            </div>
+          ) : (
+            !syncing && (
+              <EmptyState onActivate={() => setSidePanelOpened(true)} />
+            )
+          )}
+        </AppLayout>
+        <SidePanel
+          title="Accept for review paper"
+          opened={sidepanelOpened}
+          onClose={() => setSidePanelOpened(false)}
+        >
+          <PreprintForm handler={hash => api.acceptForReview(hash)} />
+        </SidePanel>
+      </div>
     </Main>
   )
 }
-
-const Title = styled.h1`
-  font-size: 30px;
-`
-
-const Syncing = styled.div.attrs({ children: 'Syncing…' })`
-  position: absolute;
-  top: 15px;
-  right: 20px;
-`
 
 export default App
