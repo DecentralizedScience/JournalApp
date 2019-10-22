@@ -9,7 +9,7 @@ import EmptyState from './screens/EmptyState'
 
 function App() {
   const { api, appState } = useAragonApi()
-  const { papers, syncing } = appState
+  const { papers, isSyncing } = appState
   const papersArray = Object.entries(papers).map(([key, value]) => ({
     ...value,
     key,
@@ -38,17 +38,17 @@ function App() {
                 title="Published Papers"
                 papers={published}
                 action="Unpublish"
-                handler={key => api.unpublish(key)}
+                handler={key => api.unpublish(key).toPromise()}
               />
               <PapersTable
                 title="Accepted for review"
                 papers={preprints}
                 action="Publish"
-                handler={key => api.publish(key)}
+                handler={key => api.publish(key).toPromise()}
               />
             </div>
           ) : (
-            !syncing && (
+            !isSyncing && (
               <EmptyState onActivate={() => setSidePanelOpened(true)} />
             )
           )}
@@ -58,7 +58,9 @@ function App() {
           opened={sidepanelOpened}
           onClose={() => setSidePanelOpened(false)}
         >
-          <PreprintForm handler={hash => api.acceptForReview(hash)} />
+          <PreprintForm
+            handler={hash => api.acceptForReview(hash).toPromise()}
+          />
         </SidePanel>
       </div>
     </Main>

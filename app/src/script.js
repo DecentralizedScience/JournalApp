@@ -1,60 +1,58 @@
 import '@babel/polyfill'
-import { of } from 'rxjs'
-import AragonApi from '@aragon/api'
+import Aragon, { events } from '@aragon/api'
 
-const INITIALIZATION_TRIGGER = Symbol('INITIALIZATION_TRIGGER')
+const app = new Aragon()
 
-const api = new AragonApi()
+app.store(async (state, { event, returnValues }) => {
+  let nextState
 
-api.store(
-  async (state, event) => {
-    let newState
+  // Initial state
+  if (state == null) {
+    nextState = { papers: {} }
+  }
 
-    switch (event.event) {
-      case INITIALIZATION_TRIGGER: {
-        newState = { papers: {} }
-        break
+  switch (event) {
+    case 'AcceptForReview': {
+      const { paper, hash } = returnValues
+      console.log('accept', paper, hash)
+      nextState = {
+        papers: {
+          ...state.papers,
+          [paper]: { hash, state: 'accepted' },
+        },
       }
-      case 'AcceptForReview': {
-        const { paper, hash } = event.returnValues
-        console.log('accept', paper, hash)
-        newState = {
-          papers: {
-            ...state.papers,
-            [paper]: { hash, state: 'accepted' },
-          },
-        }
-        break
-      }
-      case 'Publish': {
-        const { paper } = event.returnValues
-        console.log('publish', paper)
-        newState = {
-          papers: {
-            ...state.papers,
-            [paper]: { ...state.papers[paper], state: 'published' },
-          },
-        }
-        break
-      }
-      case 'Unpublish': {
-        const { paper } = event.returnValues
-        newState = {
-          papers: {
-            ...state.papers,
-            [paper]: { ...state.papers[paper], state: 'unpublshed' },
-          },
-        }
-        break
-      }
-      default:
-        newState = state
+      break
     }
+    case 'Publish': {
+      const { paper } = returnValues
+      console.log('publish', paper)
+      nextState = {
+        papers: {
+          ...state.papers,
+          [paper]: { ...state.papers[paper], state: 'published' },
+        },
+      }
+      break
+    }
+    case 'Unpublish': {
+      const { paper } = returnValues
+      nextState = {
+        papers: {
+          ...state.papers,
+          [paper]: { ...state.papers[paper], state: 'unpublshed' },
+        },
+      }
+      break
+    }
+    case events.SYNC_STATUS_SYNCING:
+      nextState = { ...nextState, isSyncing: true }
+      break
+    case events.SYNC_STATUS_SYNCED:
+      nextState = { ...nextState, isSyncing: false }
+      break
+    default:
+      nextState = state
+  }
 
-    return newState
-  },
-  [
-    // Always initialize the store with our own home-made event
-    of({ event: INITIALIZATION_TRIGGER }),
-  ]
-)
+  return nextState
+})

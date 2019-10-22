@@ -4,10 +4,7 @@ import { AragonApi } from '@aragon/api-react'
 import App from './App'
 
 const reducer = state => {
-  if (state === null) {
-    return { papers: {}, syncing: true }
-  }
-  return state
+  return { papers: {}, isSyncing: true, ...state }
 }
 
 ReactDOM.render(
