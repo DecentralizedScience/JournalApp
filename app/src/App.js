@@ -28,7 +28,7 @@ function App() {
           mainButton={{
             label: 'Accept for review',
             icon: <IconPlus />,
-            onClick: f => f,
+            onClick: () => setSidePanelOpened(true),
           }}
           smallViewPadding={0}
         >

@@ -11,7 +11,11 @@ function PreprintForm({ handler }) {
   return (
     <form onSubmit={e => e.preventDefault()}>
       <input type="file" onChange={e => upload(e.target.files[0])} />
-      <Button mode="secondary" onClick={() => handler(preprint)}>
+      <Button
+        mode="secondary"
+        onClick={() => handler(preprint)}
+        disabled={!preprint}
+      >
         Accept for review
       </Button>
     </form>
